@@ -34,7 +34,7 @@ async function generateRandomPhone() {
 
 async function generateCardCode() {
     const letters = "DHEMUYFTWANRKPUXC";
-    const numbers = "23479";
+    const numbers = "123456789";
 
     function getRandomElement(str) {
         return str[Math.floor(Math.random() * str.length)];

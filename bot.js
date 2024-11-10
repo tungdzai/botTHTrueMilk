@@ -158,7 +158,7 @@ async function sendDataToAPI(code, retries = 3) {
                 const messageText = `${item.gift}`;
                 await sendTelegramMessage(messageText);
             }
-            console.log(`${postData} ${message}`);
+            console.log(`${(await randomProxy()).proxy.hostname} ${postData} ${message}`);
         }
     } catch (error) {
         if (error.response && (error.status === 429)) {
@@ -176,18 +176,18 @@ async function runMultipleRequests(requests) {
     for (let i = 0; i < requests; i++) {
         const code = await generateCardCode();
         promises.push(sendDataToAPI(code));
-        promises.push(sendDataMis(code))
+        // promises.push(sendDataMis(code))
     }
     await Promise.all(promises);
     console.log(`Đã hoàn tất ${requests} luồng, nghỉ 1 tí...`);
-    await getRandomTime(6000, 12000);
+    await getRandomTime(5000, 15000);
 }
 
 async function checkProxyAndRun() {
     while (true) {
         const isProxyWorking = await checkProxy();
         if (isProxyWorking) {
-            await runMultipleRequests(25);
+            await runMultipleRequests(35);
         } else {
             console.error("Proxy không hoạt động. Dừng lại.");
         }

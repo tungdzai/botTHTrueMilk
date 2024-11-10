@@ -57,11 +57,10 @@ async function randomProxy() {
 
 async function checkProxy() {
     try {
-        const response = await axios.get('https://api.ipify.org?format=json', {
+        await axios.get('https://api.ipify.org?format=json', {
             httpAgent: await randomProxy(),
             httpsAgent: await randomProxy()
         });
-        console.log('Địa chỉ IP đã dùng:', response.data.ip);
         return true;
     } catch (error) {
         console.error('Lỗi khi kiểm tra proxy:', error.message);
