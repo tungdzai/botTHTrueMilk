@@ -1,0 +1,16 @@
+{
+  "name": "botthtruemilk",
+  "version": "1.0.0",
+  "description": "",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "private": true,
+  "dependencies": {
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "https-proxy-agent": "^7.0.5",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}
