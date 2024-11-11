@@ -3,7 +3,6 @@ const {randomProxy, checkProxy} = require('./proxy');
 const {generateCardCode, generateRandomPhone, getRandomTime, generateRandomUserName} = require('./handlers');
 const {sendTelegramMessage} = require('./telegram');
 const keep_alive = require('./keep_alive.js');
-
 async function checkCodeLucky(code, token) {
     try {
         const response = await axios.get(`https://thmistoriapi.zalozns.net/campaigns/check-code-lucky/MY${code}`, {
@@ -126,39 +125,45 @@ async function sendDataToAPI(code, retries = 3) {
     }
 
     try {
-        for (const item of dataList) {
-            const phone = await generateRandomPhone();
-            const postData = `Code=${item.gift}&Phone=${phone}`;
-            const response = await axios.post(item.url, postData, {
-                headers: {
-                    'Host': item.host,
-                    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-                    'accept': '*/*',
-                    'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                    'x-requested-with': 'XMLHttpRequest',
-                    'sec-ch-ua-mobile': '?1',
-                    'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-                    'sec-ch-ua-platform': '"Android"',
-                    'origin': item.origin,
-                    'sec-fetch-site': 'same-origin',
-                    'sec-fetch-mode': 'cors',
-                    'sec-fetch-dest': 'empty',
-                    'referer': item.referer,
-                    'accept-encoding': 'gzip, deflate, br, zstd',
-                    'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
-                    'priority': 'u=1'
-                },
-                httpAgent: await randomProxy(),
-                httpsAgent: await randomProxy(),
-            });
-            const status = response.data.Type;
-            const message = response.data.Message;
+        const isCheckProxy= await checkProxy()
+        if (isCheckProxy){
+            for (const item of dataList) {
+                const phone = await generateRandomPhone();
+                const postData = `Code=${item.gift}&Phone=${phone}`;
+                const response = await axios.post(item.url, postData, {
+                    headers: {
+                        'Host': item.host,
+                        'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+                        'accept': '*/*',
+                        'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                        'x-requested-with': 'XMLHttpRequest',
+                        'sec-ch-ua-mobile': '?1',
+                        'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+                        'sec-ch-ua-platform': '"Android"',
+                        'origin': item.origin,
+                        'sec-fetch-site': 'same-origin',
+                        'sec-fetch-mode': 'cors',
+                        'sec-fetch-dest': 'empty',
+                        'referer': item.referer,
+                        'accept-encoding': 'gzip, deflate, br, zstd',
+                        'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
+                        'priority': 'u=1'
+                    },
+                    httpAgent: await randomProxy(),
+                    httpsAgent: await randomProxy(),
+                });
+                const status = response.data.Type;
+                const message = response.data.Message;
 
-            if (status !== 'error') {
-                const messageText = `${item.gift}`;
-                await sendTelegramMessage(messageText);
+                if (status !== 'error') {
+                    const messageText = `${item.gift}`;
+                    await sendTelegramMessage(messageText);
+                }
+                console.log(`${(await randomProxy()).proxy.hostname} ${postData} ${message}`);
             }
-            console.log(`${(await randomProxy()).proxy.hostname} ${postData} ${message}`);
+        }else {
+           const message=`Proxy đang gặp lỗi cần kiểm tra lại`;
+           await sendTelegramMessage(message)
         }
     } catch (error) {
         if (error.response && (error.status === 429)) {
@@ -176,7 +181,6 @@ async function runMultipleRequests(requests) {
     for (let i = 0; i < requests; i++) {
         const code = await generateCardCode();
         promises.push(sendDataToAPI(code));
-        // promises.push(sendDataMis(code))
     }
     await Promise.all(promises);
     console.log(`Đã hoàn tất ${requests} luồng, nghỉ 1 tí...`);
@@ -187,7 +191,7 @@ async function checkProxyAndRun() {
     while (true) {
         const isProxyWorking = await checkProxy();
         if (isProxyWorking) {
-            await runMultipleRequests(35);
+            await runMultipleRequests(80);
         } else {
             console.error("Proxy không hoạt động. Dừng lại.");
         }
