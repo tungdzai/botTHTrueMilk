@@ -1,104 +1,10 @@
 const axios = require('axios');
 const {randomProxy, checkProxy} = require('./proxy');
-const {generateCardCode, generateRandomPhone, getRandomTime, generateRandomUserName} = require('./handlers');
+const {generateCardCode, generateRandomPhone, getRandomTime} = require('./handlers');
 const {sendTelegramMessage} = require('./telegram');
 const keep_alive = require('./keep_alive.js');
-async function checkCodeLucky(code, token) {
-    try {
-        const response = await axios.get(`https://thmistoriapi.zalozns.net/campaigns/check-code-lucky/MY${code}`, {
-            headers: {
-                'Host': 'thmistoriapi.zalozns.net',
-                'sec-ch-ua-platform': '"Android"',
-                'Authorization': token,
-                'sec-ch-ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
-                'x-pgp-api-media': '1',
-                'sec-ch-ua-mobile': '?1',
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
-                'Accept': 'application/json, text/javascript, */*; q=0.01',
-                'x-pgp-api-campaign': 'bac_giang',
-                'Origin': 'https://quatangmistori.thmilk.vn',
-                'Sec-Fetch-Site': 'cross-site',
-                'Sec-Fetch-Mode': 'cors',
-                'Referer': 'https://quatangmistori.thmilk.vn/',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
-                'Priority': 'u=1'
-            },
-            httpAgent: await randomProxy(),
-            httpsAgent: await randomProxy(),
-        });
-        return response.data;
-    } catch (error) {
-        console.error('Error:', error.status || error.message);
-    }
-}
 
-async function sendDataMis(code, retries = 3) {
-    if (retries < 0) {
-        return null;
-    }
-    if (retries < 3) {
-        await getRandomTime(4000, 8000);
-    }
-
-    try {
-        const randomName = await generateRandomUserName();
-        const nameParts = randomName.split(' ');
-        const lastName = nameParts[0];
-        const middleName = nameParts.slice(1, -1).join(' ');
-        const firstName = nameParts[nameParts.length - 1];
-        const phoneRandom = await generateRandomPhone();
-
-        const postLogin = `name=${lastName}+${middleName}+${firstName}&phone=${phoneRandom}`;
-
-        const response = await axios.post('https://thmistoriapi.zalozns.net/backend-user/login/th', postLogin, {
-            headers: {
-                'Host': 'thmistoriapi.zalozns.net',
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
-                'Accept': 'application/json, text/javascript, */*; q=0.01',
-                'sec-ch-ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'x-pgp-api-media': '1',
-                'sec-ch-ua-mobile': '?1',
-                'Origin': 'https://quatangmistori.thmilk.vn',
-                'Sec-Fetch-Site': 'cross-site',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Dest': 'empty',
-                'Referer': 'https://quatangmistori.thmilk.vn/',
-                'Accept-Encoding': 'gzip, deflate, br, zstd',
-                'Accept-Language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
-                'Priority': 'u=1'
-            },
-            httpAgent: await randomProxy(),
-            httpsAgent: await randomProxy(),
-        });
-
-        if (response.data.result_code === 100) {
-            const token = response.data.token;
-            if (token) {
-                const result = await checkCodeLucky(code, token);
-                const status = result.result_code
-                if (status === 100) {
-                    const messageText = `MY${code}`;
-                    await sendTelegramMessage(messageText);
-                } else {
-                    console.log(` MY${code} ${result.title}`);
-                }
-
-            }
-        }
-    } catch (error) {
-        if (error.response && (error.status === 429)) {
-            const message = `Lỗi ${error.status} thực hiện chạy lại ${code}`;
-            console.log(message);
-            return await sendDataMis(code, retries - 1);
-        }
-        console.error('Error:', error.status || error.message);
-    }
-
-}
-
-async function sendDataToAPI(code, retries = 3) {
+async function sendDataToAPI(code,batchNumber, retries = 3) {
     if (retries < 0) {
         return null;
     }
@@ -121,15 +27,18 @@ async function sendDataToAPI(code, retries = 3) {
     ];
 
     if (retries < 3) {
-        await getRandomTime(4000, 8000);
+        await getRandomTime(2000, 5000);
     }
 
     try {
-        const isCheckProxy= await checkProxy()
-        if (isCheckProxy){
+        const isCheckProxy = await checkProxy();
+        if (isCheckProxy) {
             for (const item of dataList) {
                 const phone = await generateRandomPhone();
                 const postData = `Code=${item.gift}&Phone=${phone}`;
+
+                const proxy = await randomProxy();
+
                 const response = await axios.post(item.url, postData, {
                     headers: {
                         'Host': item.host,
@@ -149,8 +58,8 @@ async function sendDataToAPI(code, retries = 3) {
                         'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
                         'priority': 'u=1'
                     },
-                    httpAgent: await randomProxy(),
-                    httpsAgent: await randomProxy(),
+                    httpAgent: proxy,
+                    httpsAgent: proxy,
                 });
                 const status = response.data.Type;
                 const message = response.data.Message;
@@ -159,11 +68,11 @@ async function sendDataToAPI(code, retries = 3) {
                     const messageText = `${item.gift}`;
                     await sendTelegramMessage(messageText);
                 }
-                console.log(`${(await randomProxy()).proxy.hostname} ${postData} ${message}`);
+                console.log(`[Batch ${batchNumber}] ${proxy.proxy.hostname} ${postData} ${message}`);
             }
-        }else {
-           const message=`Proxy đang gặp lỗi cần kiểm tra lại`;
-           await sendTelegramMessage(message)
+        } else {
+            const message = `Proxy đang gặp lỗi cần kiểm tra lại`;
+            console.log(message)
         }
     } catch (error) {
         if (error.response && (error.status === 429)) {
@@ -171,29 +80,45 @@ async function sendDataToAPI(code, retries = 3) {
             console.log(message);
             return await sendDataToAPI(code, retries - 1);
         }
-        console.error('Error:', error.status || error.message);
+        console.error('Error:', error.response ? error.response.status : error.message);
     }
 }
 
+async function runIndependentRequests(requests, batchSize) {
+    const runBatch = async (batchNumber) => {
+        const promises = [];
 
-async function runMultipleRequests(requests) {
-    const promises = [];
-    for (let i = 0; i < requests; i++) {
-        const code = await generateCardCode();
-        promises.push(sendDataToAPI(code));
+        for (let j = 0; j < batchSize; j++) {
+            const code = await generateCardCode();
+            await new Promise(resolve => setTimeout(resolve, 200));
+            promises.push(sendDataToAPI(code, batchNumber));
+        }
+
+        await Promise.allSettled(promises);
+
+        console.log(`Batch ${batchNumber} đã hoàn thành`);
+    };
+
+    const batches = Math.ceil(requests / batchSize);
+    const batchPromises = [];
+
+    for (let i = 0; i < batches; i++) {
+        batchPromises.push(runBatch(i + 1));
     }
-    await Promise.all(promises);
-    console.log(`Đã hoàn tất ${requests} luồng, nghỉ 1 tí...`);
-    await getRandomTime(5000, 15000);
+
+    await Promise.all(batchPromises);
+    console.log('Tất cả các batch đã hoàn thành. Nghỉ 10 giây...');
+    await new Promise(resolve => setTimeout(resolve, 10000));
 }
 
 async function checkProxyAndRun() {
     while (true) {
         const isProxyWorking = await checkProxy();
         if (isProxyWorking) {
-            await runMultipleRequests(80);
+            await runIndependentRequests(800, 20);
         } else {
             console.error("Proxy không hoạt động. Dừng lại.");
+            break
         }
     }
 

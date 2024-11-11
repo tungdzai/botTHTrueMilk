@@ -1,9 +1,12 @@
 require('dotenv').config();
 const axios = require('axios');
 const {HttpsProxyAgent} = require('https-proxy-agent');
+const fs = require('fs');  // Thêm module fs để đọc file
 const key = process.env.KEY_PROXY;
 
 let cachedProxies = null;
+
+// Lấy proxy từ api
 async function getProxy() {
     const loaiproxy = 'Viettel';
     const url = `https://proxy.vn/api/listproxy.php?key=${key}&loaiproxy=${loaiproxy}`;
@@ -21,21 +24,34 @@ async function getProxy() {
 
         return cachedProxies;
     } catch (error) {
-        console.error('Lỗi khi lấy proxy:', error.message);
         return null;
     }
 }
-async function getProxiesData() {
-    if (!cachedProxies) {
-        console.log('Dữ liệu proxy chưa có cập nhật lại')
-        await getProxy();
+
+// Lấy proxy từ file
+async function getProxiesFromFile() {
+    try {
+        const data = fs.readFileSync('proxy.txt', 'utf8');
+        return data.split('\n').map(line => {
+            const [host, port, user, password] = line.split(':');
+            return {host, port, user, password};
+        });
+    } catch (error) {
+        console.error('Lỗi lấy proxy từ file:', error.message);
+        return [];
     }
-    return cachedProxies;
 }
 
-async function parseProxy(proxy) {
-    const [host, port, user, password] = proxy.split(':');
-    return {host, port, user, password};
+async function getProxiesData() {
+    if (!cachedProxies) {
+        console.log('Dữ liệu proxy chưa có, đang cập nhật lại...');
+        await getProxy();
+
+        if (!cachedProxies || cachedProxies.length === 0) {
+            cachedProxies = await getProxiesFromFile();
+        }
+    }
+    return cachedProxies;
 }
 
 async function getRandomProxy() {
@@ -46,46 +62,54 @@ async function getRandomProxy() {
         return null;
     }
 
-    const randomProxyData = proxiesData[Math.floor(Math.random() * proxiesData.length)];
-    const proxy = randomProxyData.proxy;
-    return parseProxy(proxy);
+    return proxiesData[Math.floor(Math.random() * proxiesData.length)];
 }
+
 async function randomProxy() {
     const proxyData = await getRandomProxy();
-
     if (!proxyData) {
         console.error('Không thể tạo proxy');
         return null;
     }
 
-    const { host: proxyHost, port: proxyPort, user: proxyUser, password: proxyPassword } = proxyData;
+    const {host: proxyHost, port: proxyPort, user: proxyUser, password: proxyPassword} = proxyData;
     const proxyUrl = `http://${proxyUser}:${proxyPassword}@${proxyHost}:${proxyPort}`;
     return new HttpsProxyAgent(proxyUrl);
 }
 
-
 async function checkProxy() {
     try {
-        await axios.get('https://api.ipify.org?format=json', {
-            httpAgent: await randomProxy(),
-            httpsAgent: await randomProxy()
-        });
-        return true;
-    } catch (error) {
-        console.error('Lỗi khi kiểm tra proxy:', error.message);
-        console.log('Đang làm mới danh sách proxy...');
-        await getProxy();
-        try {
+        const proxy = await randomProxy();
+        if (proxy) {
             await axios.get('https://api.ipify.org?format=json', {
-                httpAgent: await randomProxy(),
-                httpsAgent: await randomProxy()
+                httpAgent: proxy,
+                httpsAgent: proxy
             });
+
             return true;
-        } catch (retryError) {
-            console.error('Lỗi khi kiểm tra lại proxy:', retryError.message);
+        } else {
             return false;
         }
-        return false;
+    } catch (error) {
+        await getProxy();
+        if (!cachedProxies || cachedProxies.length === 0) {
+            console.log('Thử lại proxy từ file...');
+            cachedProxies = await getProxiesFromFile();
+        }
+
+        try {
+            const proxy = await randomProxy();
+            if (proxy) {
+                await axios.get('https://api.ipify.org?format=json', {
+                    httpAgent: proxy,
+                    httpsAgent: proxy
+                });
+
+                return true;
+            }
+        } catch (retryError) {
+            return false;
+        }
     }
 }
 
