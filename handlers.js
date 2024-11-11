@@ -33,15 +33,15 @@ async function generateRandomPhone() {
 }
 
 async function generateCardCode() {
-    const letters = "DHEMUYFTWANRKPUXC";
-    const numbers = "123456789";
+    const letters = "TYAUPKEHFCDMRNWX";
+    const numbers = "234789";
 
     function getRandomElement(str) {
         return str[Math.floor(Math.random() * str.length)];
     }
 
-    const numCount = Math.floor(Math.random() * 4) + 1;
-    const letterCount = 7 - numCount;
+    const numCount = Math.floor(Math.random() * 3) + 1;
+    const letterCount = 6 - numCount;
 
     let cardCodeArray = [];
 
@@ -60,10 +60,11 @@ async function generateCardCode() {
 
     return cardCodeArray.join('');
 }
+
+console.log(generateCardCode())
 module.exports = {
     generateCardCode,
     generateRandomPhone,
     getRandomTime,
     generateRandomUserName
-
 };

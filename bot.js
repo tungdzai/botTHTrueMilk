@@ -12,14 +12,14 @@ async function sendDataToAPI(code,batchNumber, retries = 3) {
     const dataList = [
         {
             url: 'https://quatangyogurt.thmilk.vn/Home/CheckCode',
-            gift: `YE${code}`,
+            gift: `YE4${code}`,
             host: 'quatangyogurt.thmilk.vn',
             origin: 'https://quatangyogurt.thmilk.vn',
             referer: 'https://quatangyogurt.thmilk.vn/'
         },
         {
             url: 'https://quatangtopkid.thmilk.vn/Home/CheckCode',
-            gift: `TY${code}`,
+            gift: `TY4${code}`,
             host: 'quatangtopkid.thmilk.vn',
             origin: 'https://quatangtopkid.thmilk.vn',
             referer: 'https://quatangtopkid.thmilk.vn/'
