@@ -7,7 +7,7 @@ const key = process.env.KEY_PROXY;
 let cachedProxies = null;
 
 async function getProxy() {
-    const loaiproxy = 'VNPT';
+    const loaiproxy = 'Viettel';
     const url = `https://proxy.vn/api/listproxy.php?key=${key}&loaiproxy=${loaiproxy}`;
 
     try {
