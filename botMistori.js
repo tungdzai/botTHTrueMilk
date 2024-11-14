@@ -4,7 +4,7 @@ const {generateCardCode, generateRandomPhone, getRandomTime, generateRandomUserN
 const {sendTelegramMessage} = require('./telegram');
 const keep_alive = require('./keep_alive.js');
 
-async function login(retries = 5) {
+async function login(proxy, retries = 5) {
     if (retries < 0) {
         return null
     }
@@ -32,8 +32,11 @@ async function login(retries = 5) {
                 'Sec-Fetch-Mode': 'cors',
                 'Sec-Fetch-Dest': 'empty',
                 'host': 'thmistoriapi.zalozns.net'
-            }
+            },
+            httpAgent: proxy,
+            httpsAgent: proxy
         });
+        console.log(proxy.proxy. hostname)
         return response.data
 
     } catch (error) {
@@ -49,7 +52,7 @@ async function login(retries = 5) {
     }
 }
 
-async function checkCodeLucky(token, gift, retries = 5) {
+async function checkCodeLucky(proxy, token, gift, retries = 5) {
     if (retries < 0) {
         return null;
     }
@@ -77,8 +80,9 @@ async function checkCodeLucky(token, gift, retries = 5) {
                 'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
                 'priority': 'u=1'
             },
+            httpAgent: proxy,
+            httpsAgent: proxy
         });
-        // console.log(response.data)
         return response.data
 
     } catch (error) {
@@ -91,15 +95,15 @@ async function checkCodeLucky(token, gift, retries = 5) {
     }
 }
 
-async function handle(gift) {
-    const resultLogin = await login();
-    if (resultLogin !== null) {
-        if (resultLogin.result_code === 100) {
-            const token = resultLogin.token;
-            return await checkCodeLucky(token, gift);
-        } else {
-            console.error('Lỗi: Không thể login hoặc result_code không hợp lệ', resultLogin);
-            return null;
+async function handle(giftCode) {
+    const proxy = await randomProxy();
+    if (proxy) {
+        const result = await login(proxy);
+        if (result !== null) {
+            if (result.result_code === 100) {
+                const token = result.token;
+                return await checkCodeLucky(proxy,token, giftCode);
+            }
         }
     }
 }
@@ -109,7 +113,7 @@ async function sendDataToAPI(code, batchNumber, retries = 3) {
         return null;
     }
     if (retries < 3) {
-        await getRandomTime(1000, 5000);
+        await getRandomTime(2000, 5000);
     }
 
     try {
@@ -118,17 +122,12 @@ async function sendDataToAPI(code, batchNumber, retries = 3) {
         if (response.result_code === 100) {
             const messageText = `${giftCode}`;
             await sendTelegramMessage(messageText);
-        }else {
-            console.log(`[Batch ${batchNumber}] ${giftCode} ${response.result_code} ${response.title}`);
+        } else {
+            console.log(`[Batch ${batchNumber}] ${giftCode} ${response.title}`);
         }
 
     } catch (error) {
-        if (error.response && (error.status === 429)) {
-            const message = `Lỗi sendDataToAPI ${error.status} thực hiện chạy lại....`;
-            console.log(message);
-            return await sendDataToAPI(code, retries - 1);
-        }
-        console.error('sendDataToAPI lỗi:', error);
+        console.error('sendDataToAPI lỗi:', error.message);
     }
 }
 
@@ -138,7 +137,7 @@ async function runIndependentRequests(requests, batchSize) {
 
         for (let j = 0; j < batchSize; j++) {
             const code = await generateCardCode();
-            await new Promise(resolve => setTimeout(resolve, 150));
+            await new Promise(resolve => setTimeout(resolve, 1000));
             promises.push(sendDataToAPI(code, batchNumber));
         }
 
@@ -163,7 +162,7 @@ async function checkProxyAndRun() {
     while (true) {
         const isProxyWorking = await checkProxy();
         if (isProxyWorking) {
-            await runIndependentRequests(250, 25);
+            await runIndependentRequests(200, 10);
         } else {
             console.error("Proxy không hoạt động. Dừng lại.");
             break

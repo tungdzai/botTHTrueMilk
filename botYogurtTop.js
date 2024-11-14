@@ -37,14 +37,15 @@ async function handleYogurtTop(item, retries = 3) {
             httpAgent: proxy,
             httpsAgent: proxy,
         });
+        console.log(response)
         return response.data
     } catch (error) {
         if (error.response && (error.status === 429)) {
-            const message = `Lỗi handleYogurtTop ${error.status} thực hiện chạy lại....`;
+            const message = `Lỗi handle YogurtTop ${error.status} thực hiện chạy lại....`;
             console.log(message);
             return await handleYogurtTop(item, retries - 1);
         }
-        console.error('handleYogurtTop lỗi:', error.response ? error.response.status : error.message);
+        console.error('handle YogurtTop lỗi:', error.response ? error.response.status : error.message);
     }
 
 }
@@ -76,10 +77,10 @@ async function sendDataToAPI(code, batchNumber, retries = 3) {
         ];
         for (const item of dataList) {
             if (item.gift.startsWith("YE") || item.gift.startsWith("TY")) {
-                const responseYogurtTop = await handleYogurtTop(item);
-                if (responseYogurtTop !== null) {
-                    const status = responseYogurtTop.Type;
-                    const message = responseYogurtTop.Message;
+                const response = await handleYogurtTop(item);
+                if (response !== null) {
+                    const status = response.Type;
+                    const message = response.Message;
                     if (status !== 'error') {
                         const messageText = `${item.gift}`;
                         await sendTelegramMessage(messageText);
@@ -89,11 +90,6 @@ async function sendDataToAPI(code, batchNumber, retries = 3) {
             }
         }
     } catch (error) {
-        if (error.response && (error.status === 429) ) {
-            const message = `Lỗi sendDataToAPI ${error.status} thực hiện chạy lại....`;
-            console.log(message);
-            return await sendDataToAPI(code, retries - 1);
-        }
         console.error('sendDataToAPI lỗi:', error);
     }
 }
@@ -103,7 +99,7 @@ async function runIndependentRequests(requests, batchSize) {
 
         for (let j = 0; j < batchSize; j++) {
             const code = await generateCardCode();
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 500));
             promises.push(sendDataToAPI(code, batchNumber));
         }
 
@@ -120,8 +116,8 @@ async function runIndependentRequests(requests, batchSize) {
     }
 
     await Promise.all(batchPromises);
-    console.log('Tất cả các batch đã hoàn thành. Nghỉ 10 giây...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    console.log('Tất cả các batch đã hoàn thành. Nghỉ 15 giây...');
+    await new Promise(resolve => setTimeout(resolve, 15000));
 }
 
 async function checkProxyAndRun() {

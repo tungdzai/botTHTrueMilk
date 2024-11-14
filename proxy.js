@@ -7,7 +7,7 @@ const key = process.env.KEY_PROXY;
 let cachedProxies = null;
 
 async function getProxy() {
-    const loaiproxy = 'Viettel';
+    const loaiproxy = 'US';
     const url = `https://proxy.vn/api/listproxy.php?key=${key}&loaiproxy=${loaiproxy}`;
 
     try {
@@ -20,7 +20,6 @@ async function getProxy() {
                 if (index === arr.length - 1) return JSON.parse(`{${str}`);
                 return JSON.parse(`{${str}}`);
             });
-
         return cachedProxies;
     } catch (error) {
         return null;
@@ -41,7 +40,7 @@ async function getProxiesFromFile() {
 
 async function getProxiesData() {
     if (!cachedProxies) {
-        console.log('Dữ liệu proxy chưa có, đang cập nhật lại...');
+        console.log('Dữ liệu proxy đang cập nhật lại...');
         await getProxy();
 
         if (!cachedProxies || cachedProxies.length === 0) {
@@ -63,20 +62,19 @@ async function getRandomProxy() {
 }
 
 async function randomProxy() {
+    let proxyHost, proxyPort, proxyUser, proxyPassword;
+
     const proxyData = await getRandomProxy();
     if (!proxyData) {
         console.error('Không thể tạo proxy');
         return null;
     }
-
-    const { proxy } = proxyData;
-    const [proxyHost, proxyPort, proxyUser, proxyPassword] = proxy.split(':');
-
-    if (!proxyHost || !proxyPort || !proxyUser || !proxyPassword) {
-        console.error('Dữ liệu proxy không hợp lệ');
-        return null;
+    if (typeof proxyData === 'string') {
+        [proxyHost, proxyPort, proxyUser, proxyPassword] = proxyData.split(':');
+    } else if (typeof proxyData === 'object') {
+        const proxy = proxyData.proxy;
+        [proxyHost, proxyPort, proxyUser, proxyPassword] = proxy.split(':');
     }
-
     const proxyUrl = `http://${proxyUser}:${proxyPassword}@${proxyHost}:${proxyPort}`;
     return new HttpsProxyAgent(proxyUrl);
 }
@@ -115,6 +113,5 @@ async function checkProxy() {
         }
     }
 }
-
 
 module.exports = {randomProxy, checkProxy};
