@@ -58,7 +58,7 @@ async function checkCodeLucky(token, gift, retries = 5) {
         return null;
     }
     if (retries < 5) {
-        await getRandomTime(1000, 5000)
+        await getRandomTime(3000, 10000)
     }
     try {
         const proxy = await randomProxy();
@@ -99,9 +99,12 @@ async function checkCodeLucky(token, gift, retries = 5) {
 
 async function handleMistori(gift) {
     const resultLogin = await login();
-    if (resultLogin.result_code === 100) {
+    if (resultLogin && resultLogin.result_code === 100) {
         const token = resultLogin.token;
         return await checkCodeLucky(token, gift)
+    }else {
+        console.error("Lỗi: resultLogin không hợp lệ hoặc thiếu 'result_code'", resultLogin);
+        return null;
     }
 }
 
@@ -218,7 +221,7 @@ async function runIndependentRequests(requests, batchSize) {
 
         for (let j = 0; j < batchSize; j++) {
             const code = await generateCardCode();
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 250));
             promises.push(sendDataToAPI(code, batchNumber));
         }
 
@@ -243,7 +246,7 @@ async function checkProxyAndRun() {
     while (true) {
         const isProxyWorking = await checkProxy();
         if (isProxyWorking) {
-            await runIndependentRequests(250, 25);
+            await runIndependentRequests(150, 15);
         } else {
             console.error("Proxy không hoạt động. Dừng lại.");
             break
