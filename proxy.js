@@ -1,14 +1,13 @@
 require('dotenv').config();
 const axios = require('axios');
 const {HttpsProxyAgent} = require('https-proxy-agent');
-const fs = require('fs');  // Thêm module fs để đọc file
+const fs = require('fs');
 const key = process.env.KEY_PROXY;
 
 let cachedProxies = null;
 
-// Lấy proxy từ api
 async function getProxy() {
-    const loaiproxy = 'Viettel';
+    const loaiproxy = 'VNPT';
     const url = `https://proxy.vn/api/listproxy.php?key=${key}&loaiproxy=${loaiproxy}`;
 
     try {
@@ -27,8 +26,6 @@ async function getProxy() {
         return null;
     }
 }
-
-// Lấy proxy từ file
 async function getProxiesFromFile() {
     try {
         const data = fs.readFileSync('proxy.txt', 'utf8');
@@ -72,11 +69,17 @@ async function randomProxy() {
         return null;
     }
 
-    const {host: proxyHost, port: proxyPort, user: proxyUser, password: proxyPassword} = proxyData;
+    const { proxy } = proxyData;
+    const [proxyHost, proxyPort, proxyUser, proxyPassword] = proxy.split(':');
+
+    if (!proxyHost || !proxyPort || !proxyUser || !proxyPassword) {
+        console.error('Dữ liệu proxy không hợp lệ');
+        return null;
+    }
+
     const proxyUrl = `http://${proxyUser}:${proxyPassword}@${proxyHost}:${proxyPort}`;
     return new HttpsProxyAgent(proxyUrl);
 }
-
 async function checkProxy() {
     try {
         const proxy = await randomProxy();
@@ -112,5 +115,6 @@ async function checkProxy() {
         }
     }
 }
+
 
 module.exports = {randomProxy, checkProxy};

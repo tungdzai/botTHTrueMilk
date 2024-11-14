@@ -1,10 +1,156 @@
 const axios = require('axios');
 const {randomProxy, checkProxy} = require('./proxy');
-const {generateCardCode, generateRandomPhone, getRandomTime} = require('./handlers');
+const {generateCardCode, generateRandomPhone, getRandomTime, generateRandomUserName} = require('./handlers');
 const {sendTelegramMessage} = require('./telegram');
 const keep_alive = require('./keep_alive.js');
 
-async function sendDataToAPI(code,batchNumber, retries = 3) {
+async function login(retries = 3) {
+    if (retries < 0) {
+        return null
+    }
+    if (retries < 3) {
+        await getRandomTime(1000, 5000)
+    }
+    try {
+        const randomName = await generateRandomUserName();
+        const nameParts = randomName.split(' ');
+        const lastName = nameParts[0];
+        const middleName = nameParts.slice(1, -1).join(' ');
+        const firstName = nameParts[nameParts.length - 1];
+        const phone = await generateRandomPhone();
+        const data = `name=${lastName}+${middleName}+${firstName}&phone=${phone}`;
+        const proxy = await randomProxy();
+        const response = await axios.post('https://thmistoriapi.zalozns.net/backend-user/login/th', data, {
+            headers: {
+                'Host': 'thmistoriapi.zalozns.net',
+                'sec-ch-ua-platform': 'Android',
+                'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
+                'accept': 'application/json, text/javascript, */*; q=0.01',
+                'sec-ch-ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+                'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'x-pgp-api-media': '1',
+                'sec-ch-ua-mobile': '?1',
+                'origin': 'https://quatangmistori.thmilk.vn',
+                'sec-fetch-site': 'same-origin',
+                'sec-fetch-mode': 'cors',
+                'sec-fetch-dest': 'empty',
+                'referer': 'https://quatangmistori.thmilk.vn/',
+                'accept-encoding': 'gzip, deflate, br, zstd',
+                'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
+                'priority': 'u=1'
+            },
+            httpAgent: proxy,
+            httpsAgent: proxy,
+        });
+        return response.data
+
+    } catch (error) {
+        if (error.response) {
+            const message = `Lỗi login ${error.status}. Login thực hiện chạy lại....`;
+            console.log(message);
+            return await login(retries - 1);
+        }
+        console.error('login lỗi:', error.response ? error.response.status : error.message);
+    }
+}
+async function checkCodeLucky(token, gift, retries = 5) {
+    if (retries < 0) {
+        return null;
+    }
+    if (retries < 5) {
+        await getRandomTime(1000, 5000)
+    }
+    try {
+        const proxy = await randomProxy();
+        const response = await axios.get(`https://thmistoriapi.zalozns.net/campaigns/check-code-lucky/${gift}`, {
+            headers: {
+                'Host': 'thmistoriapi.zalozns.net',
+                'sec-ch-ua-platform': 'Android',
+                'authorization': token,
+                'sec-ch-ua': '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+                'x-pgp-api-media': '1',
+                'sec-ch-ua-mobile': '?1',
+                'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
+                'accept': 'application/json, text/javascript, */*; q=0.01',
+                'x-pgp-api-campaign': 'bac_giang',
+                'origin': 'https://quatangmistori.thmilk.vn',
+                'sec-fetch-site': 'same-origin',
+                'sec-fetch-mode': 'cors',
+                'sec-fetch-dest': 'empty',
+                'referer': 'https://quatangmistori.thmilk.vn/',
+                'accept-encoding': 'gzip, deflate, br, zstd',
+                'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
+                'priority': 'u=1'
+            },
+            httpAgent: proxy,
+            httpsAgent: proxy,
+        });
+        return response.data
+
+    } catch (error) {
+        if (error.response && (error.status === 504)) {
+            const message = `Lỗi checkCodeLucky ${error.status}. Mã mistori thực hiện chạy lại....`;
+            console.log(message);
+            return await checkCodeLucky(token, gift, retries - 1);
+        }
+        console.error('checkCodeLucky lỗi:', error.response ? error.response.status : error.message);
+    }
+}
+
+async function handleMistori(gift) {
+    const resultLogin = await login();
+    if (resultLogin.result_code === 100) {
+        const token = resultLogin.token;
+        return await checkCodeLucky(token, gift)
+    }
+}
+
+async function handleYogurtTop(item, retries = 5) {
+    if (retries < 0) {
+        return null
+    }
+    if (retries < 5) {
+        await getRandomTime(1000, 5000)
+    }
+    try {
+        const phone = await generateRandomPhone();
+        const postData = `Code=${item.gift}&Phone=${phone}`;
+        const proxy = await randomProxy();
+        const response = await axios.post(item.url, postData, {
+            headers: {
+                'Host': item.host,
+                'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+                'accept': '*/*',
+                'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'x-requested-with': 'XMLHttpRequest',
+                'sec-ch-ua-mobile': '?1',
+                'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+                'sec-ch-ua-platform': '"Android"',
+                'origin': item.origin,
+                'sec-fetch-site': 'same-origin',
+                'sec-fetch-mode': 'cors',
+                'sec-fetch-dest': 'empty',
+                'referer': item.referer,
+                'accept-encoding': 'gzip, deflate, br, zstd',
+                'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
+                'priority': 'u=1'
+            },
+            httpAgent: proxy,
+            httpsAgent: proxy,
+        });
+        return response.data
+    } catch (error) {
+        if (error.response && (error.status === 429)) {
+            const message = `Lỗi handleYogurtTop ${error.status} thực hiện chạy lại....`;
+            console.log(message);
+            return await handleYogurtTop(item, retries - 1);
+        }
+        console.error('handleYogurtTop lỗi:', error.response ? error.response.status : error.message);
+    }
+
+}
+
+async function sendDataToAPI(code, batchNumber, retries = 3) {
     if (retries < 0) {
         return null;
     }
@@ -23,64 +169,46 @@ async function sendDataToAPI(code,batchNumber, retries = 3) {
             host: 'quatangtopkid.thmilk.vn',
             origin: 'https://quatangtopkid.thmilk.vn',
             referer: 'https://quatangtopkid.thmilk.vn/'
+        },
+        {
+            gift: `MY4${code}`,
         }
-    ];
 
+    ];
     if (retries < 3) {
-        await getRandomTime(2000, 5000);
+        await getRandomTime(1000, 5000);
     }
 
     try {
-        const isCheckProxy = await checkProxy();
-        if (isCheckProxy) {
-            for (const item of dataList) {
-                const phone = await generateRandomPhone();
-                const postData = `Code=${item.gift}&Phone=${phone}`;
-
-                const proxy = await randomProxy();
-
-                const response = await axios.post(item.url, postData, {
-                    headers: {
-                        'Host': item.host,
-                        'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-                        'accept': '*/*',
-                        'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                        'x-requested-with': 'XMLHttpRequest',
-                        'sec-ch-ua-mobile': '?1',
-                        'user-agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-                        'sec-ch-ua-platform': '"Android"',
-                        'origin': item.origin,
-                        'sec-fetch-site': 'same-origin',
-                        'sec-fetch-mode': 'cors',
-                        'sec-fetch-dest': 'empty',
-                        'referer': item.referer,
-                        'accept-encoding': 'gzip, deflate, br, zstd',
-                        'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
-                        'priority': 'u=1'
-                    },
-                    httpAgent: proxy,
-                    httpsAgent: proxy,
-                });
-                const status = response.data.Type;
-                const message = response.data.Message;
-
-                if (status !== 'error') {
+        for (const item of dataList) {
+            if (item.gift.startsWith("YE") || item.gift.startsWith("TY")) {
+                const responseYogurtTop = await handleYogurtTop(item);
+                if (responseYogurtTop !== null) {
+                    const status = responseYogurtTop.Type;
+                    const message = responseYogurtTop.Message;
+                    if (status !== 'error') {
+                        const messageText = `${item.gift}`;
+                        await sendTelegramMessage(messageText);
+                    }
+                    console.log(`[Batch ${batchNumber}] ${item.gift} ${message}`);
+                }
+            } else if (item.gift.startsWith("MY")) {
+                const responseMistori = await handleMistori(item.gift);
+                if (responseMistori.result_code === 100) {
                     const messageText = `${item.gift}`;
                     await sendTelegramMessage(messageText);
                 }
-                console.log(`[Batch ${batchNumber}] ${proxy.proxy.hostname} ${postData} ${message}`);
+                console.log(`[Batch ${batchNumber}] ${item.gift} ${responseMistori.result_code}`);
             }
-        } else {
-            const message = `Proxy đang gặp lỗi cần kiểm tra lại`;
-            console.log(message)
         }
     } catch (error) {
-        if (error.response && (error.status === 429)) {
-            const message = `Lỗi ${error.status} thực hiện chạy lại....`;
+        // console.log(`Lỗi sendDataToAPI`,error)
+        if (error.response && (error.status === 429) ) {
+            const message = `Lỗi sendDataToAPI ${error.status} thực hiện chạy lại....`;
             console.log(message);
             return await sendDataToAPI(code, retries - 1);
         }
-        console.error('Error:', error.response ? error.response.status : error.message);
+        console.error('sendDataToAPI lỗi:', error);
     }
 }
 
@@ -90,7 +218,7 @@ async function runIndependentRequests(requests, batchSize) {
 
         for (let j = 0; j < batchSize; j++) {
             const code = await generateCardCode();
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => setTimeout(resolve, 300));
             promises.push(sendDataToAPI(code, batchNumber));
         }
 
@@ -108,14 +236,14 @@ async function runIndependentRequests(requests, batchSize) {
 
     await Promise.all(batchPromises);
     console.log('Tất cả các batch đã hoàn thành. Nghỉ 10 giây...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    await new Promise(resolve => setTimeout(resolve, 15000));
 }
 
 async function checkProxyAndRun() {
     while (true) {
         const isProxyWorking = await checkProxy();
         if (isProxyWorking) {
-            await runIndependentRequests(800, 20);
+            await runIndependentRequests(250, 25);
         } else {
             console.error("Proxy không hoạt động. Dừng lại.");
             break

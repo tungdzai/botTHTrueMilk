@@ -61,7 +61,6 @@ async function generateCardCode() {
     return cardCodeArray.join('');
 }
 
-console.log(generateCardCode())
 module.exports = {
     generateCardCode,
     generateRandomPhone,
