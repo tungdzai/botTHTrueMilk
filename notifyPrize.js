@@ -1,20 +1,18 @@
 const axios = require('axios');
-const {randomProxy, checkProxy} = require('./proxy');
 const {sendTelegramMessage} = require('./telegram');
 const keep_alive = require('./keep_alive.js');
 const {getRandomTime} = require("./handlers");
 
 let previousData = {};
 
-async function numberPrize(requestData,reties=5) {
-    if (reties<0){
+async function numberPrize(requestData, reties = 5) {
+    if (reties < 0) {
         return null
     }
-    if (reties<5){
-        await getRandomTime(2000,5000)
+    if (reties < 5) {
+        await getRandomTime(1000, 5000)
     }
     try {
-        const proxy = await randomProxy();
         const response = await axios.get(`${requestData.referer}home/NumberPrize`, {
             headers: {
                 'Host': requestData.host,
@@ -32,9 +30,7 @@ async function numberPrize(requestData,reties=5) {
                 'accept-encoding': 'gzip, deflate, br, zstd',
                 'accept-language': 'vi-VN,vi;q=0.9,fr-FR;q=0.8,fr;q=0.7,en-US;q=0.6,en;q=0.5',
                 'priority': 'u=1'
-            },
-            httpAgent: proxy,
-            httpsAgent: proxy,
+            }
         });
         return response.data;
 
@@ -56,28 +52,26 @@ function checkForChanges(newData, url) {
 }
 
 async function main() {
-    const isProxyWorking = await checkProxy();
-    if (isProxyWorking) {
-        const listData = [
-            {
-                host: 'quatangtopkid.thmilk.vn',
-                referer: 'https://quatangtopkid.thmilk.vn/'
-            },
-            {
-                host: 'quatangyogurt.thmilk.vn',
-                referer: 'https://quatangyogurt.thmilk.vn/'
-            }
-        ];
-
-        for (const data of listData) {
-            const result = await numberPrize(data);
-            console.log(result);
-            if (checkForChanges(result, data.referer)) {
-                await sendTelegramMessage(`Quà ${data.referer} tụt: bú thôi ô cháu !`);
-            }
-            previousData[data.referer] = result;
+    const listData = [
+        {
+            host: 'quatangtopkid.thmilk.vn',
+            referer: 'https://quatangtopkid.thmilk.vn/'
+        },
+        {
+            host: 'quatangyogurt.thmilk.vn',
+            referer: 'https://quatangyogurt.thmilk.vn/'
         }
+    ];
+
+    for (const data of listData) {
+        const result = await numberPrize(data);
+        console.log(result);
+        if (checkForChanges(result, data.referer)) {
+            await sendTelegramMessage(`Quà ${data.referer} tụt rồi:bú thôi ô cháu !`);
+        }
+        previousData[data.referer] = result;
     }
 }
 
-setInterval(main, 60 * 1000);
+main()
+setInterval(main, 3 * 60 * 1000);
